@@ -40,6 +40,7 @@ export function createTaskRouter(db: Database): Router {
     
     try {
       const { title,description}=req.body;
+      console.log(title,description)
       if( !title ){
         res.status(400).json('Enter all fields')
       }

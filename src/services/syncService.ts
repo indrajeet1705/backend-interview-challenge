@@ -31,6 +31,7 @@ export class SyncService {
     // 6. Return sync result summary
     try {
       const items = await this.db.all('SELECT * FROM sync_queue');
+
       if (items.length === 0) {
         return {
           success: true,
@@ -48,11 +49,16 @@ export class SyncService {
       let failed_items = 0;
       const errors = [];
       for (const batch of batches) {
+        console.log('in batch');
         const response = await this.processBatch(batch);
+        console.log(response);
         for (let i = 0; i < batch.length; i++) {
+          
+          console.log('in for loop', response);
           const item = batch[i];
           const result = response.processed_items[i];
           if (result.status == 'success') {
+            console.log('one item synced');
             await this.updateSyncStatus(
               item.task_id,
               'synced',
@@ -60,6 +66,7 @@ export class SyncService {
             );
             synced_items++;
           } else {
+            console.log('one item failed');
             await this.handleSyncError(
               item,
               new Error(result.error || 'error'),
@@ -73,14 +80,14 @@ export class SyncService {
             });
           }
         }
-       
       }
-       return {
-          success: failed_items === 0,
-          synced_items,
-          failed_items,
-          errors,
-        };
+      console.log('before return');
+      return {
+        success: failed_items === 0,
+        synced_items,
+        failed_items,
+        errors,
+      };
     } catch (error) {
       return {
         success: false,
@@ -98,7 +105,7 @@ export class SyncService {
     }
   }
 
-   async addToSyncQueue(
+  async addToSyncQueue(
     taskId: string,
     operation: 'create' | 'update' | 'delete',
     data: Partial<Task>,
@@ -107,45 +114,55 @@ export class SyncService {
     // 1. Create sync queue item
     // 2. Store serialized task data
     // 3. Insert into sync_queue table
-   
-      const  id= uuidv4()
-      await this.db.run('INSERT INTO sync_queue(id,task_id,operation,data,created_at,retry_count,error_message) values(?,?,?,?,?,?,?,?)',
-        [  id, taskId,operation,{title:data.title,description:data.description},data.created_at,0,'No Error']
+    console.log(' in add to sync queue');
+    const id = uuidv4();
+    const dataToInsert = {
+      title: data.title,
+      description: data.description,
+    };
 
-      )
- 
+    await this.db.run(
+      'INSERT INTO sync_queue (id,task_id,operation,data,created_at,retry_count,error_message) VALUES(?,?,?,?,?,?,?)',
+      [
+        id,
+        taskId,
+        operation,
+        JSON.stringify(dataToInsert),
+        data.created_at,
+        0,
+        'No Error',
+      ],
+    );
   }
 
-  private async processBatch(
-    items: SyncQueueItem[],
-  ): Promise<BatchSyncResponse> {
-  
-    // 4. Apply conflict resolution if needed
-    try {
-      const batchRequest: BatchSyncRequest = {
-        items: items,
-        client_timestamp: new Date(),
-      };
+private async processBatch(
+  items: SyncQueueItem[],
+): Promise<BatchSyncResponse> {
+  try {
+    const batchRequest: BatchSyncRequest = {
+      items,
+      client_timestamp: new Date(),
+    };
 
-      const response = await axios.post(
-        `${this.apiUrl}/sync/batch`,
-        batchRequest,
-        {
-          timeout: 30000,
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        },
-      );
-      const batchrResponse: BatchSyncResponse = response.data;
 
-      console.log(batchrResponse);
 
-      return batchrResponse;
-    } catch (error) {
-      throw new Error('Not implemented');
-    }
+    const response = await axios.post(
+      `${this.apiUrl}/sync/batch`,
+      batchRequest,
+      { timeout: 30000 }
+    );
+
+    console.log('response from server', response.data);
+
+    const batchResponse: BatchSyncResponse = response.data;
+    return batchResponse;
+  } catch (error) {
+    console.log('in catch of processBatch')
+    console.error("Error in processBatch:", error);
+    throw error;
   }
+}
+
 
   private async resolveConflict(
     localTask: Task,
@@ -155,7 +172,9 @@ export class SyncService {
     // 1. Compare updated_at timestamps
     // 2. Return the more recent version
     // 3. Log conflict resolution decision
-    return localTask.updated_at > serverTask.updated_at ? localTask : serverTask;
+    const ComparedTimeStampTask =
+      localTask.updated_at > serverTask.updated_at ? localTask : serverTask;
+    return ComparedTimeStampTask;
   }
 
   private async updateSyncStatus(
@@ -165,25 +184,25 @@ export class SyncService {
   ): Promise<void> {
     // TODO: Update task sync status
 
-
     try {
       const now = new Date();
-      const task = await this.db.get('SELECT * FROM tasks WHERE id = ?', [taskId]);
-      if(!task) {
+      const task = await this.db.get('SELECT * FROM tasks WHERE id = ?', [
+        taskId,
+      ]);
+      if (!task) {
         throw new Error('Task not found');
       }
-      await this.db.run('UPDATE tasks SET sync_status = ?, last_synced_at = ?, server_id = ? WHERE id = ?',[
-        status,
-        now,
-        serverData?.server_id || task.server_id,
-      ])  
+      await this.db.run(
+        'UPDATE tasks SET sync_status = ?, last_synced_at = ?, server_id = ? WHERE id = ?',
+        [status, now, serverData?.server_id || task.server_id],
+      );
       if (status === 'synced') {
         await this.db.run('DELETE FROM sync_queue WHERE task_id = ?', [taskId]);
       }
-
-    
     } catch (error) {
-      throw new Error(`Failed to update sync status: ${(error as Error).message}`);
+      throw new Error(
+        `Failed to update sync status: ${(error as Error).message}`,
+      );
     }
   }
 
@@ -192,31 +211,25 @@ export class SyncService {
     error: Error,
   ): Promise<void> {
     // TODO: Handle sync errors
-   
-     try {
+
+    try {
       const maxRetries = parseInt(process.env.MAX_RETRY_COUNT || '5');
       const newRetryCount = item.retry_count + 1;
       if (newRetryCount >= maxRetries) {
-        await this.db.run('UPDATE sync_queue SET retry_count = ?, error_message = ? WHERE id = ?', [
-          newRetryCount,
-          `Permanent failure: ${error.message}`,
-          item.id
-        ]
-        )
+        await this.db.run(
+          'UPDATE sync_queue SET retry_count = ?, error_message = ? WHERE id = ?',
+          [newRetryCount, `Permanent failure: ${error.message}`, item.id],
+        );
+      } else {
+        await this.db.run(
+          'UPDATE sync_queue SET retry_count = ?, error_message = ? WHERE id = ?',
+          [newRetryCount, error.message, item.id],
+        );
       }
-      else {
-        await this.db.run('UPDATE sync_queue SET retry_count = ?, error_message = ? WHERE id = ?', [
-          newRetryCount,
-          error.message,
-          item.id
-        ]
-        )
-      }
-
-        
-
     } catch (dbError) {
-      console.error(`Failed to handle sync error: ${(dbError as Error).message}`);
+      console.error(
+        `Failed to handle sync error: ${(dbError as Error).message}`,
+      );
     }
   }
 

@@ -24,7 +24,7 @@ export class TaskService {
         (id, title, description, completed, created_at, updated_at, is_deleted, sync_status, server_id, last_synced_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
-      
+      console.log('before insert')
 //Inserted into tasks 
       await this.db.run(query, [
         id,
@@ -39,8 +39,10 @@ export class TaskService {
         createdAt,
       ]);
 //Inserted into sync_queue
-      await this.syncService.addToSyncQueue(id, 'create', taskData);
+               console.log('after insert')
 
+      await this.syncService.addToSyncQueue(id, 'create', {title:taskData.title,description:taskData.description,created_at:createdAt});
+      console.log('after sync queue insert')
       return {
         id,
         title: taskData.title!,
