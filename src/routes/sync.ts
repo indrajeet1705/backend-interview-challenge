@@ -14,7 +14,21 @@ export function createSyncRouter(db: Database): Router {
     // 1. Check connectivity first
     // 2. Call syncService.sync()
     // 3. Return sync result
-    res.status(501).json({ error: 'Not implemented' });
+   try {
+      const  isConnected = syncService.checkConnectivity()
+      if( !isConnected){
+        return res.status(500).json({
+          success:false,
+        error:"Server is not Reachable"
+        })
+      }
+       const response= await syncService.sync()
+       return response
+
+
+   } catch (error) {
+    
+   }
   });
 
   // Check sync status
@@ -24,7 +38,11 @@ export function createSyncRouter(db: Database): Router {
     // 2. Get last sync timestamp
     // 3. Check connectivity
     // 4. Return status summary
-    res.status(501).json({ error: 'Not implemented' });
+    try {
+      
+    } catch (error) {
+      
+    }
   });
 
   // Batch sync endpoint (for server-side)
