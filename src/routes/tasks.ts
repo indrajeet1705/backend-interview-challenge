@@ -37,10 +37,7 @@ export function createTaskRouter(db: Database): Router {
   // Create task
  
   router.post('/', async (req: Request, res: Response) => {
-    // TODO: Implement task creation endpoint
-    // 1. Validate request body
-    // 2. Call taskService.createTask()
-    // 3. Return created task
+    
     try {
       const { title,description}=req.body;
       if( !title ){
@@ -56,42 +53,35 @@ export function createTaskRouter(db: Database): Router {
 
   // Update task
   router.put('/:id', async (req: Request, res: Response) => {
-    // TODO: Implement task update endpoint
-    // 1. Validate request body
-    // 2. Call taskService.updateTask()
-    // 3. Handle not found case
-    // 4. Return updated task
+
 try {
     const { title, description, completed } = req.body;
 
     if (title === undefined || description === undefined || completed === undefined) {
-      return res.status(400).json({ message: "Missing fields" });
+       res.status(400).json({ message: "Missing fields" });
     }
 
     const updatedTask = await taskService.updateTask(req.params.id, { title, description, completed });
 
     if (!updatedTask) {
-      return res.status(404).json({ message: "Task not found" });
+       res.status(404).json({ message: "Task not found" });
     }
 
     res.status(200).json({ success: true, task: updatedTask });
   } catch (error) {
-    res.status(500).json({ message: 'Something went wrong' });
+     res.status(500).json({ message: 'Something went wrong' });
   }
   });
 
   // Delete task
   router.delete('/:id', async (req: Request, res: Response) => {
-    // TODO: Implement task deletion endpoint
-    // 1. Call taskService.deleteTask()
-    // 2. Handle not found case
-    // 3. Return success response
+
     try {
       
       const deletedTask = await taskService.deleteTask(req.params.id)
       
       if(deletedTask){
-        res.status(204).json({message:"No Content"})
+         res.status(204).json({message:"No Content"})
       }
       else{
          res.status(404).json({message:'Not Found'})

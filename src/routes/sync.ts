@@ -14,21 +14,15 @@ export function createSyncRouter(db: Database): Router {
     // 1. Check connectivity first
     // 2. Call syncService.sync()
     // 3. Return sync result
-   try {
-      const  isConnected = syncService.checkConnectivity()
-      if( !isConnected){
-        return res.status(500).json({
-          success:false,
-        error:"Server is not Reachable"
-        })
+  try {
+      if (!(await syncService.checkConnectivity())) {
+        return res.status(503).json({ error: 'Server not reachable' });
       }
-       const response= await syncService.sync()
-       return response
-
-
-   } catch (error) {
-    
-   }
+      const result = await syncService.sync();
+      return res.json(result);
+    } catch (error) {
+      return res.status(500).json({ error: 'Sync failed' });
+    }
   });
 
   // Check sync status
