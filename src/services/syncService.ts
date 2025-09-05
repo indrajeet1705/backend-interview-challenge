@@ -30,7 +30,7 @@ export class SyncService {
     // 5. Update sync status in database
     // 6. Return sync result summary
     try {
-      const items = await this.db.all('SELECT * FROM sync_queue');
+      const items = await this.db.all('SELECT * FROM sync_queue WHERE retry_count < ?',[5]);
 
       if (items.length === 0) {
         return {
@@ -51,7 +51,7 @@ export class SyncService {
       for (const batch of batches) {
         console.log('in batch');
         const response = await this.processBatch(batch);
-        console.log(response);
+        // console.log(response);
         for (let i = 0; i < batch.length; i++) {
           
           console.log('in for loop', response);
@@ -144,15 +144,22 @@ private async processBatch(
       client_timestamp: new Date(),
     };
 
-
+   console.log('in processBatch', batchRequest);
 
     const response = await axios.post(
       `${this.apiUrl}/sync/batch`,
       batchRequest,
-      { timeout: 30000 }
+      { timeout: 30000 ,
+        headers: {
+      'Content-Type': 'application/json',
+    },
+      },
+      
+        
+      
     );
 
-    console.log('response from server', response.data);
+    
 
     const batchResponse: BatchSyncResponse = response.data;
     return batchResponse;

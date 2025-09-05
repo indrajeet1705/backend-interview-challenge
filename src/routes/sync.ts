@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { SyncService } from '../services/syncService';
 import { TaskService } from '../services/taskService';
 import { Database } from '../db/database';
+import { v4 as uuid4 } from 'uuid';
 
 export function createSyncRouter(db: Database): Router {
   const router = Router();
@@ -40,11 +41,29 @@ export function createSyncRouter(db: Database): Router {
   });
 
   // Batch sync endpoint (for server-side)
-  router.post('/batch', async (req: Request, res: Response) => {
+  router.post('/sync/batch', async (req: Request, res: Response) => {
     // TODO: Implement batch sync endpoint
     // This would be implemented on the server side
     // to handle batch sync requests from clients
-    res.status(501).json({ error: 'Not implemented' });
+    
+    try {
+      const {items,client_timestamp}=req.body
+      if(!items || !client_timestamp){
+        return res.status(400).json({error:'Invalid request'})
+      }
+      let processed_items=[]
+     for (let item of  items){
+            processed_items.push({
+              client_id:item.id,
+              server_id:uuid4(),
+              status:'success',
+            })
+     }
+     return res.status(200).json({processed_items})
+    
+    } catch (error) {
+      throw new Error('Method not implemented.');
+    }
   });
 
   // Health check endpoint
