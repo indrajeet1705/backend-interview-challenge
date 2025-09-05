@@ -34,9 +34,23 @@ export function createSyncRouter(db: Database): Router {
     // 3. Check connectivity
     // 4. Return status summary
     try {
-      
+      const pendingCount = await db.get(
+        'SELECT COUNT(*) as count FROM sync_queue WHERE retry_count < ?',
+        [5],
+      );
+      const lastSync = await db.get(
+        'SELECT MAX(last_synced_at) as last_sync FROM tasks WHERE sync_status = ?',
+        ['synced'],
+      );
+      const isConnected = await syncService.checkConnectivity();
+      return res.json({
+        pending_items: pendingCount.count || 0,
+        last_sync: lastSync.last_sync || null
+        ,
+        server_reachable: isConnected,
+      });
     } catch (error) {
-      
+      throw new Error('Method not implemented.');
     }
   });
 
