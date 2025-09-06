@@ -15,7 +15,7 @@ export function createSyncRouter(db: Database): Router {
     // 1. Check connectivity first
     // 2. Call syncService.sync()
     // 3. Return sync result
-  try {
+    try {
       if (!(await syncService.checkConnectivity())) {
         return res.status(503).json({ error: 'Server not reachable' });
       }
@@ -45,8 +45,7 @@ export function createSyncRouter(db: Database): Router {
       const isConnected = await syncService.checkConnectivity();
       return res.json({
         pending_items: pendingCount.count || 0,
-        last_sync: lastSync.last_sync || null
-        ,
+        last_sync: lastSync.last_sync || null,
         server_reachable: isConnected,
       });
     } catch (error) {
@@ -59,22 +58,21 @@ export function createSyncRouter(db: Database): Router {
     // TODO: Implement batch sync endpoint
     // This would be implemented on the server side
     // to handle batch sync requests from clients
-    
+
     try {
-      const {items,client_timestamp}=req.body
-      if(!items || !client_timestamp){
-        return res.status(400).json({error:'Invalid request'})
+      const { items, client_timestamp } = req.body;
+      if (!items || !client_timestamp) {
+        return res.status(400).json({ error: 'Invalid request' });
       }
-      let processed_items=[]
-     for (let item of  items){
-            processed_items.push({
-              client_id:item.id,
-              server_id:uuid4(),
-              status:'success',
-            })
-     }
-     return res.status(200).json({processed_items})
-    
+      let processed_items = [];
+      for (let item of items) {
+        processed_items.push({
+          client_id: item.id,
+          server_id: uuid4(),
+          status: 'success',
+        });
+      }
+      return res.status(200).json({ processed_items });
     } catch (error) {
       throw new Error('Method not implemented.');
     }

@@ -1,9 +1,9 @@
 import { v4 as uuidv4 } from 'uuid';
 import { Task } from '../types';
 import { Database } from '../db/database';
-import { UUID } from 'crypto';
-import { request } from 'http';
-import { fstat } from 'fs';
+// import { UUID } from 'crypto';
+// import { request } from 'http';
+// import { fstat } from 'fs';
 import { SyncService } from './syncService';
 
 export class TaskService {
@@ -24,8 +24,8 @@ export class TaskService {
         (id, title, description, completed, created_at, updated_at, is_deleted, sync_status, server_id, last_synced_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
-      console.log('before insert')
-//Inserted into tasks 
+      console.log('before insert');
+      //Inserted into tasks
       await this.db.run(query, [
         id,
         taskData.title,
@@ -38,11 +38,15 @@ export class TaskService {
         serverId,
         createdAt,
       ]);
-//Inserted into sync_queue
-               console.log('after insert')
+      //Inserted into sync_queue
+      console.log('after insert');
 
-      await this.syncService.addToSyncQueue(id, 'create', {title:taskData.title,description:taskData.description,created_at:createdAt});
-      console.log('after sync queue insert')
+      await this.syncService.addToSyncQueue(id, 'create', {
+        title: taskData.title,
+        description: taskData.description,
+        created_at: createdAt,
+      });
+      console.log('after sync queue insert');
       return {
         id,
         title: taskData.title!,
@@ -66,15 +70,21 @@ export class TaskService {
       if (!task) {
         return null;
       }
-//Inserted into tasks 
+      //Inserted into tasks
 
       await this.db.run(
         `UPDATE tasks SET title=?,
         description=?,completed=?,updated_at=? WHERE id =?`,
-        [updates.title, updates.description, updates.completed, new Date(), id],
+        [
+          updates.title ?? task.title,
+          updates.description ?? task.description,
+          updates.completed ?? task.completed,
+          new Date(),
+          id,
+        ],
       );
-//Inserted into sync_queue
-      await this.syncService.addToSyncQueue(id, 'create', task);
+      //Inserted into sync_queue
+      await this.syncService.addToSyncQueue(id, 'update', task);
       return {
         ...task,
         title: updates.title ?? task.title,
@@ -84,7 +94,7 @@ export class TaskService {
         sync_status: 'pending',
       };
     } catch (error) {
-      throw new Error('Something went wrong');
+      throw error;
     }
   }
 
@@ -93,14 +103,14 @@ export class TaskService {
       console.log('in function ', id);
       const task = await this.db.get('SELECT * FROM tasks WHERE id =?', [id]);
       if (!task) return false;
-//Inserted into tasks 
+      //Inserted into tasks
 
       await this.db.run(
         'UPDATE tasks SET is_deleted = ?,updated_at=?, sync_status=? WHERE id = ?',
         [true, new Date(), 'pending', id],
       );
-//Inserted into sync_queue
-      await this.syncService.addToSyncQueue(id, 'create', task);
+      //Inserted into sync_queue
+      await this.syncService.addToSyncQueue(id, 'delete', task);
 
       return true;
     } catch (error) {
@@ -119,7 +129,7 @@ export class TaskService {
 
   async getAllTasks(): Promise<Task[]> {
     try {
-      const query: string = 'SELECT * FROM tasks';
+      const query: string = 'SELECT * FROM tasks WHERE is_deleted = 0';
       const tasks = await this.db.all(query, []);
       return tasks;
     } catch (error) {

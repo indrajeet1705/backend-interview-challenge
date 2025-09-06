@@ -8,7 +8,6 @@ import {
 } from '../types';
 import { Database } from '../db/database';
 import { TaskService } from './taskService';
-import { UUID } from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 export class SyncService {
   private apiUrl: string;
@@ -29,8 +28,14 @@ export class SyncService {
     // 4. Handle success/failure for each item
     // 5. Update sync status in database
     // 6. Return sync result summary
+    let synced_items = 0;
+    let failed_items = 0;
+    const errors = [];
     try {
-      const items = await this.db.all('SELECT * FROM sync_queue WHERE retry_count < ?',[5]);
+      const items = await this.db.all(
+        'SELECT * FROM sync_queue WHERE retry_count < ?',
+        [5],
+      );
 
       if (items.length === 0) {
         return {
@@ -45,20 +50,14 @@ export class SyncService {
       for (let i = 0; i < items.length; i += batchSize) {
         batches.push(items.slice(i, i + batchSize));
       }
-      let synced_items = 0;
-      let failed_items = 0;
-      const errors = [];
+
       for (const batch of batches) {
-        console.log('in batch');
         const response = await this.processBatch(batch);
-        // console.log(response);
+
         for (let i = 0; i < batch.length; i++) {
-          
-          console.log('in for loop', response);
           const item = batch[i];
           const result = response.processed_items[i];
           if (result.status == 'success') {
-            console.log('one item synced');
             await this.updateSyncStatus(
               item.task_id,
               'synced',
@@ -66,7 +65,6 @@ export class SyncService {
             );
             synced_items++;
           } else {
-            console.log('one item failed');
             await this.handleSyncError(
               item,
               new Error(result.error || 'error'),
@@ -81,7 +79,7 @@ export class SyncService {
           }
         }
       }
-      console.log('before return');
+
       return {
         success: failed_items === 0,
         synced_items,
@@ -92,7 +90,7 @@ export class SyncService {
       return {
         success: false,
         synced_items: 0,
-        failed_items: 0,
+        failed_items: failed_items || 1,
         errors: [
           {
             task_id: 'system',
@@ -114,7 +112,7 @@ export class SyncService {
     // 1. Create sync queue item
     // 2. Store serialized task data
     // 3. Insert into sync_queue table
-    console.log(' in add to sync queue');
+
     const id = uuidv4();
     const dataToInsert = {
       title: data.title,
@@ -135,41 +133,33 @@ export class SyncService {
     );
   }
 
-private async processBatch(
-  items: SyncQueueItem[],
-): Promise<BatchSyncResponse> {
-  try {
-    const batchRequest: BatchSyncRequest = {
-      items,
-      client_timestamp: new Date(),
-    };
+  private async processBatch(
+    items: SyncQueueItem[],
+  ): Promise<BatchSyncResponse> {
+    try {
+      const batchRequest: BatchSyncRequest = {
+        items,
+        client_timestamp: new Date(),
+      };
 
-   console.log('in processBatch', batchRequest);
+      const response = await axios.post(
+        `${this.apiUrl}/sync/batch`,
+        batchRequest,
+        {
+          timeout: 30000,
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        },
+      );
 
-    const response = await axios.post(
-      `${this.apiUrl}/sync/batch`,
-      batchRequest,
-      { timeout: 30000 ,
-        headers: {
-      'Content-Type': 'application/json',
-    },
-      },
-      
-        
-      
-    );
-
-    
-
-    const batchResponse: BatchSyncResponse = response.data;
-    return batchResponse;
-  } catch (error) {
-    console.log('in catch of processBatch')
-    console.error("Error in processBatch:", error);
-    throw error;
+      const batchResponse: BatchSyncResponse = response.data;
+      return batchResponse;
+    } catch (error) {
+      console.error('Error in processBatch:', error);
+      throw error;
+    }
   }
-}
-
 
   private async resolveConflict(
     localTask: Task,
