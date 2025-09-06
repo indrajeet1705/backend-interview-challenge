@@ -1,98 +1,148 @@
-# Backend Interview Challenge - Task Sync API
+# Backend Interview Challenge – API Documentation
 
-This is a backend developer interview challenge focused on building a sync-enabled task management API. The challenge evaluates understanding of REST APIs, data synchronization, offline-first architecture, and conflict resolution.
+This project provides a Task Management API with CRUD operations, along with Sync APIs for offline-first synchronization.
 
-## 📚 Documentation Overview
+# 🌐 Base URL
+https://backend-interview-challenge-gqr4.onrender.com/api
 
-Please read these documents in order:
+# 📋 Task APIs
+1. Get All Tasks
 
-1. **[📋 Submission Instructions](./docs/SUBMISSION_INSTRUCTIONS.md)** - How to submit your solution (MUST READ)
-2. **[📝 Requirements](./docs/REQUIREMENTS.md)** - Detailed challenge requirements and implementation tasks
-3. **[🔌 API Specification](./docs/API_SPEC.md)** - Complete API documentation with examples
-4. **[🤖 AI Usage Guidelines](./docs/AI_GUIDELINES.md)** - Guidelines for using AI tools during the challenge
+Method: GET
 
-**⚠️ Important**: DO NOT create pull requests against this repository. All submissions must be through private forks.
+Endpoint: /tasks
 
-## Challenge Overview
+Description: Retrieve all tasks.
 
-Candidates are expected to implement a backend API that:
-- Manages tasks (CRUD operations)
-- Supports offline functionality with a sync queue
-- Handles conflict resolution when syncing
-- Provides robust error handling
+Response Codes:
 
-## Project Structure
+200 OK → List of tasks
 
-```
-backend-interview-challenge/
-├── src/
-│   ├── db/             # Database setup and configuration
-│   ├── models/         # Data models (if needed)
-│   ├── services/       # Business logic (TO BE IMPLEMENTED)
-│   ├── routes/         # API endpoints (TO BE IMPLEMENTED)
-│   ├── middleware/     # Express middleware
-│   ├── types/          # TypeScript interfaces
-│   └── server.ts       # Express server setup
-├── tests/              # Test files
-├── docs/               # Documentation
-└── package.json        # Dependencies and scripts
-```
+2. Get Single Task
 
-## Getting Started
+Method: GET
 
-### Prerequisites
-- Node.js (v18 or higher)
-- npm or yarn
+Endpoint: /tasks/:id
 
-### Setup
-1. Clone the repository
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-3. Copy environment variables:
-   ```bash
-   cp .env.example .env
-   ```
-4. Run the development server:
-   ```bash
-   npm run dev
-   ```
+Example: /tasks/80975acb-83c2-4f11-9a28-41ea90f02e37
 
-### Available Scripts
+Description: Retrieve a single task by ID.
 
-- `npm run dev` - Start development server with hot reload
-- `npm run build` - Build TypeScript to JavaScript
-- `npm run start` - Start production server
-- `npm test` - Run tests
-- `npm run test:ui` - Run tests with UI
-- `npm run lint` - Run ESLint
-- `npm run typecheck` - Check TypeScript types
+Response Codes:
 
-## Your Task
+200 OK → Task found
 
-### Key Implementation Files
+404 Not Found → Task does not exist
 
-You'll need to implement the following services and routes:
+3. Create a Task
 
-- `src/services/taskService.ts` - Task CRUD operations
-- `src/services/syncService.ts` - Sync logic and conflict resolution  
-- `src/routes/tasks.ts` - REST API endpoints
-- `src/routes/sync.ts` - Sync-related endpoints
+Method: POST
 
-### Before Submission
+Endpoint: /tasks
 
-Ensure all of these pass:
-```bash
-npm test          # All tests must pass
-npm run lint      # No linting errors
-npm run typecheck # No TypeScript errors
-```
+Description: Create a new task.
 
-### Time Expectation
+Request Body:
 
-This challenge is designed to take 2-3 hours to complete.
+{
+  "title": "Go to gym",
+  "description": "Go to gym at 4 pm"
+}
 
-## License
 
-This project is for interview purposes only.
+Response Codes:
+
+201 Created → Task created
+
+400 Bad Request → Invalid input
+
+4. Update a Task
+
+Method: PUT
+
+Endpoint: /tasks/:id
+
+Example: /tasks/80975acb-83c2-4f11-9a28-41ea90f02e37
+
+Description: Update an existing task.
+
+Request Body:
+
+{
+  "title": "Wake up at 9 am",
+  "description": "wake up early",
+  "completed": true
+}
+
+
+Response Codes:
+
+200 OK → Task updated
+
+404 Not Found → Task not found
+
+5. Delete a Task
+
+Method: DELETE
+
+Endpoint: /tasks/:id
+
+Example: /tasks/80975acb-83c2-4f11-9a28-41ea90f02e37
+
+Description: Delete a task by ID.
+
+Response Codes:
+
+204 No Content → Task deleted
+
+404 Not Found → Task not found
+
+# 🔄 Sync APIs
+1. Trigger Manual Sync
+
+Method: POST
+
+Endpoint: /sync
+
+URL:
+https://backend-interview-challenge-gqr4.onrender.com/api/sync
+
+Description: Trigger a sync process to push/pull updates between client and server.
+
+Response Codes:
+
+200 OK → Sync completed
+
+503 Service Unavailable → Server not reachable
+
+500 Internal Server Error → Sync failed
+
+2. Sync Health Check
+
+Method: GET
+
+Endpoint: /health
+
+URL:
+https://backend-interview-challenge-gqr4.onrender.com/api/health
+
+Description: Check if the sync service is alive.
+
+Response Codes:
+
+200 OK → Service healthy
+
+3. Sync Status
+
+Method: GET
+
+Endpoint: /status
+
+URL:
+https://backend-interview-challenge-gqr4.onrender.com/api/status
+
+Description: Get current sync status, including pending sync items, last sync timestamp, and connectivity.
+
+Response Codes:
+
+200 OK → Status retrieved
